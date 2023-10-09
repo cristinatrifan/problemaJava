@@ -49,23 +49,21 @@ class WeatherAverageForecastServiceImpl implements WeatherAverageForecastService
     }
 
     private WeatherAverageForecastDto.CityWeatherDTO getAverageForecastByCity(String city, WeatherApiDto apiDto) {
-        ForecastElementsToIntDto forecastElemDto = ForecastElementsToIntDto.builder()
-                .temperature(new ArrayList<>())
-                .wind(new ArrayList<>())
-                .build();
+        List<Integer> tempList = new ArrayList<>();
+        List<Integer> windList = new ArrayList<>();
 
         WeatherAverageForecastDto.CityWeatherDTO cityWeatherDTO = getInitialCityWeatherDTO(city);
 
         apiDto.getForecast().forEach(forecast -> {
-            forecastElemDto.temperature.add(getElementAsInt(forecast.getTemperature()));
-            forecastElemDto.wind.add(getElementAsInt(forecast.getWind()));
+            tempList.add(getElementAsInteger(forecast.getTemperature()));
+            windList.add(getElementAsInteger(forecast.getWind()));
         });
 
-        forecastElemDto.temperature.stream().mapToInt(Integer::intValue).average()
+        tempList.stream().mapToInt(Integer::intValue).average()
                 .ifPresentOrElse(avrTemp -> cityWeatherDTO.setTemperature(getAverageAsString(avrTemp)),
                         () -> log.error("There are no temperature forecast values for city " + city));
 
-        forecastElemDto.wind.stream().mapToInt(Integer::intValue).average()
+        windList.stream().mapToInt(Integer::intValue).average()
                 .ifPresentOrElse(avrWind -> cityWeatherDTO.setWind(getAverageAsString(avrWind)),
                         () -> log.error("There are no wind forecast values for city " + city));
 
@@ -74,19 +72,18 @@ class WeatherAverageForecastServiceImpl implements WeatherAverageForecastService
 
     /**
      * Temperature and wind values should not be presented with decimal values
+     * They are rounded down
      */
     private static String getAverageAsString(double avrTemp) {
         return String.valueOf(BigDecimal.valueOf(avrTemp).intValue());
     }
 
-    private static int getElementAsInt(String forecastElement) {
-        int value;
+    private Integer getElementAsInteger(String forecastElement) {
         try {
-            value = Integer.parseInt(forecastElement);
+            return Integer.valueOf(forecastElement);
         } catch (NumberFormatException e) {
             throw new BusinessException("The forecast is corrupt and the average cannot be calculated.");
         }
-        return value;
     }
 
     private WeatherAverageForecastDto.CityWeatherDTO getInitialCityWeatherDTO(String city) {
@@ -97,11 +94,4 @@ class WeatherAverageForecastServiceImpl implements WeatherAverageForecastService
                 .build();
     }
 
-    @Builder
-    @Getter
-    @Setter
-    private static class ForecastElementsToIntDto {
-        List<Integer> temperature;
-        List<Integer> wind;
-    }
 }
